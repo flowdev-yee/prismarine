@@ -125,7 +125,7 @@ window.addEventListener('resize', () => {
 const showEl = (str) => { document.getElementById(str).style = 'display:block' }
 const hideEl = (str) => { document.getElementById(str).style = 'display:none' }
 
-function startConnection (options, { showLoading = false } = {}) {
+function startConnection (options, { showLoading = true } = {}) {
   hideEl('title-screen')
   hideEl('play-screen')
   if (showLoading) showEl('loading-screen')
@@ -144,10 +144,11 @@ async function main () {
 async function autoConnect () {
   const config = await (await window.fetch('config.json')).json()
   if (config.autoConnect === false) {
+    hideEl('loading-screen')
     showEl('title-screen')
     return
   }
-  const username = window.localStorage.getItem('username') ?? `pviewer${Math.floor(Math.random() * 1000)}`
+  const username = window.localStorage.getItem('username') ?? config.defaultUsername ?? 'NYNC0MP00P'
   startConnection({
     server: `${config.defaultHost}:${config.defaultHostPort ?? 25565}`,
     proxy: `${config.defaultProxy}${config.defaultProxy ? `:${config.defaultProxyPort ?? 443}` : ''}`,
@@ -472,7 +473,7 @@ async function fromTheOutside (params, addr) {
 
   opts.server = `${server}:${port}`
   opts.proxy = `${proxy}:${proxyPort}`
-  opts.username = params.get('username') ?? `pviewer${Math.floor(Math.random() * 1000)}`
+  opts.username = params.get('username') ?? dfltConfig.defaultUsername ?? 'NYNC0MP00P'
   opts.password = params.get('password') ?? ''
   opts.botVersion = params.get('version') ?? false
 
@@ -486,9 +487,11 @@ let address
 if ((address = params.get('address'))) {
   fromTheOutside(params, address)
 } else {
+  showEl('loading-screen')
   main()
   autoConnect().catch((err) => {
     console.log('Automatic connection failed', err)
+    hideEl('loading-screen')
     showEl('title-screen')
   })
 }
