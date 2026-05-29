@@ -154,7 +154,7 @@ async function autoConnect () {
     proxy: `${config.defaultProxy}${config.defaultProxy ? `:${config.defaultProxyPort ?? 443}` : ''}`,
     username,
     password: window.localStorage.getItem('password') ?? '',
-    botVersion: config.defaultVersion ?? '1.18.2',
+    botVersion: config.defaultVersion ?? '',
     creativeCommand: config.creativeCommand
   })
 }
