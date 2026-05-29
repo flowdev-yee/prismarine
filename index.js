@@ -123,15 +123,39 @@ window.addEventListener('resize', () => {
 })
 
 const showEl = (str) => { document.getElementById(str).style = 'display:block' }
+const hideEl = (str) => { document.getElementById(str).style = 'display:none' }
+
+function startConnection (options, { showLoading = true } = {}) {
+  hideEl('title-screen')
+  hideEl('play-screen')
+  if (showLoading) showEl('loading-screen')
+  removePanorama()
+  connect(options)
+}
+
 async function main () {
   const menu = document.getElementById('play-screen')
 
   menu.addEventListener('connect', e => {
-    const options = e.detail
-    menu.style = 'display: none;'
-    showEl('loading-screen')
-    removePanorama()
-    connect(options)
+    startConnection(e.detail, { showLoading: true })
+  })
+}
+
+async function autoConnect () {
+  const config = await (await window.fetch('config.json')).json()
+  if (config.autoConnect === false) {
+    hideEl('loading-screen')
+    showEl('title-screen')
+    return
+  }
+  const username = window.localStorage.getItem('username') ?? config.defaultUsername ?? 'NYNC0MP00P'
+  startConnection({
+    server: `${config.defaultHost}:${config.defaultHostPort ?? 25565}`,
+    proxy: `${config.defaultProxy}${config.defaultProxy ? `:${config.defaultProxyPort ?? 443}` : ''}`,
+    username,
+    password: window.localStorage.getItem('password') ?? '',
+    botVersion: config.defaultVersion ?? '1.18.2',
+    creativeCommand: config.creativeCommand
   })
 }
 
@@ -399,6 +423,10 @@ async function connect (options) {
       })
     }, false)
 
+    if (options.creativeCommand) {
+      bot.chat(options.creativeCommand)
+    }
+
     loadingScreen.status = 'Done!'
     console.log(loadingScreen.status) // only do that because it's read in index.html and npm run fix complains.
 
@@ -411,7 +439,7 @@ async function connect (options) {
       if (loadingScreen.hasError) return
       // remove loading screen, wait a second to make sure a frame has properly rendered
       loadingScreen.style = 'display: none;'
-    }, 2500)
+    }, options.autoHideDelay ?? 0)
   })
 }
 
@@ -445,15 +473,13 @@ async function fromTheOutside (params, addr) {
 
   opts.server = `${server}:${port}`
   opts.proxy = `${proxy}:${proxyPort}`
-  opts.username = params.get('username') ?? `pviewer${Math.floor(Math.random() * 1000)}`
+  opts.username = params.get('username') ?? dfltConfig.defaultUsername ?? 'NYNC0MP00P'
   opts.password = params.get('password') ?? ''
   opts.botVersion = params.get('version') ?? false
 
   console.log(opts)
 
-  showEl('loading-screen')
-  removePanorama()
-  connect(opts)
+  startConnection(opts, { showLoading: true })
 }
 
 const params = new URLSearchParams(window.location.search)
@@ -461,6 +487,11 @@ let address
 if ((address = params.get('address'))) {
   fromTheOutside(params, address)
 } else {
-  showEl('title-screen')
+  showEl('loading-screen')
   main()
+  autoConnect().catch((err) => {
+    console.log('Automatic connection failed', err)
+    hideEl('loading-screen')
+    showEl('title-screen')
+  })
 }
